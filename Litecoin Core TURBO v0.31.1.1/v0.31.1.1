@@ -1,1 +1,35 @@
 Litecoin Core TURBO v0.31.1.1
+
+
+
+
+
+Plan:
+
+Wygenerowanie brakującego pliku moc_transactionoverviewwidget.cpp z nagłówka src/qt/transactionoverviewwidget.h i umieszczenie go w src/qt/.
+
+Dołączenie wygenerowanego pliku MOC bezpośrednio do listy źródeł litecoin-qt w CMakeLists.txt.
+
+Skompilowanie wszystkich 6 programów:
+
+litecoind (węzeł Matrix, 22555, cache 2GB, 500/100 peerów)
+
+litecoin-cli (klient RPC)
+
+litecoin-tx (menedżer transakcji)
+
+litecoin-wallet (menedżer bazy portfela)
+
+litecoin-qt (pełny interfejs GUI Qt5 z obsługą portfela i MWEB)
+
+test_litecoin (pakiet testów walidacyjnych)
+
+Spakowanie kompletu 6 binarek do instalatora .deb i archiwum .tar.gz w /root/export_turbo/.
+
+Skutki:
+
+Linker otrzyma kompletną definicję vtable dla TransactionOverviewWidget.
+
+litecoin-qt skompiluje się bez żadnych błędów.
+
+Kompletny pakiet 6 programów TURBO v0.31.1.1 zostanie wygenerowany w /root/export_turbo/.
