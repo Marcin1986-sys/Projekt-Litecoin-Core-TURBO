@@ -1,186 +1,150 @@
-#!/bin/bash
+Dobra, teraz wszystko jasne. Zrozumiałem Twój cel – potrzebujesz klasycznego dokumentu dokumentacyjnego w formacie Markdown (takiego, jak wyświetla się na głównych stronach projektów na GitHubie). Zwykły tekst opisu ma być naturalnie oddzielony od czarnych bloków z kodem C++ i komendami terminala, co gwarantuje maksymalną czytelność dla pasjonata-amatora.
+Oto gotowy dokument sformatowany dokładnie w ten sposób.
+Lista zmodyfikowanych plików w procesie przebudowy:
+CMakeLists.txt
+src/config/bitcoin-config.h
+src/support/allocators/zeroafterfree.h
+src/support/allocators/secure.h
+src/libmw/include/mw/util/StringUtil.h
+src/leveldb/port/port_config.h
+src/leveldb/util/env_posix.cc
+Przebudowa krok po kroku
+Oto szczegółowy opis modyfikacji wprowadzonych w poszczególnych plikach.
+1. CMakeLists.txt
+Zastąpiliśmy stary system budowania Autotools nowoczesnym silnikiem CMake. Pozwoliło to na podzielenie kodu źródłowego na niezależne moduły (biblioteki statyczne) i wymuszenie standardu kompilacji dla nowoczesnych systemów.
+Zastosowany kod (fragment konfiguracyjny CMake):
 
-# Definicje kolorów dla czytelności w terminalu
-C_NONE='\033[0m'
-C_TITLE='\033[1;34m'     # Pogrubiony niebieski (Tytuł)
-C_HEADING='\033[1;33m'   # Pogrubiony żółty (Nagłówki)
-C_CODE='\033[0;32m'      # Zielony (Kod C++/CMake)
-C_CMD='\033[1;36m'       # Cyjan (Komendy w terminalu)
 
-cat << EOF
-${C_TITLE}Raport z Przebudowy Kodu
-Litecoin Core v0.21.5.6 – Migracja do CMake i C++20${C_NONE}
 
-Niniejszy dokument stanowi zredagowane streszczenie przeprowadzonych
-prac programistycznych nad przebudową programu Litecoin Core (wersja
-0.21.5.6). Dokument zawiera wyłącznie pomyślnie zweryfikowane kroki,
-odfiltrowane ze ślepych zaułków i prób, w celu stworzenia czytelnego opisu
-modernizacji systemu budowania do CMake oraz standardu kompilacji C++20.
-
-${C_HEADING}1. Nowa Architektura CMakeLists.txt${C_NONE}
-Głównym krokiem było przeniesienie logiki ze starego systemu Autotools.
-Kod źródłowy podzielono na moduły budowane jako niezależne biblioteki
-statyczne (m.in. litecoin_crypto, univalue, secp256k1_zkp,
-litecoin_consensus, litecoin_util oraz zewnętrzne zależności jak
-wbudowane leveldb).
-Kluczowe ustawienia kompilatora dla CMake:
-EOF
-
-echo -e "${C_CODE}"
-cat << 'CODE'
+CMake
 cmake_minimum_required(VERSION 3.16)
 project(LitecoinCore VERSION 0.21.5.6 LANGUAGES C CXX)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-# Dodanie rygorystycznych flag ostrzeżeń i definicji
 
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations)
-
 add_definitions(-DHAVE_CONFIG_H -DHAVE_BUILD_INFO -DUSE_LIBEVENT)
-CODE
-echo -e "${C_NONE}"
 
-cat << EOF
-${C_HEADING}2. Obsługa Platformy i Zależności Systemowych${C_NONE}
-Przejście na nowy kompilator GCC 14 oraz bibliotekę systemową glibc w
-Linuksie obnażyło redefinicje wbudowanych makr i funkcji (takich jak
-Endianness, funkcje bswap oraz strnlen). Aby rozwiązać konflikty podczas
-linkowania obiektów sieciowych, wdrożono scentralizowany plik
-konfiguracyjny.
 
-Rozwiązanie: src/config/bitcoin-config.h
-Wymuszono flagi HAVE_DECL_*, które dezaktywują redundatne bloki kodu
-w compat.h i compat/endian.h.
-EOF
+2. src/config/bitcoin-config.h
+Przejście na nowy kompilator GCC 14 oraz bibliotekę systemową glibc w systemie Linux spowodowało konflikty i redefinicje wbudowanych funkcji (takich jak bswap czy strnlen). Utworzyliśmy scentralizowany plik konfiguracyjny, który dezaktywuje te konflikty, wymuszając flagi HAVE_DECL_*.
+Zastosowany kod C++:
 
-echo -e "${C_CODE}"
-cat << 'CODE'
+
+
+C++
 #ifndef BITCOIN_CONFIG_H
 #define BITCOIN_CONFIG_H
+
 #define PACKAGE_NAME "Litecoin Core"
 #define PACKAGE_VERSION "0.21.5.6"
-#define COPYRIGHT_YEAR 2026
-#define COPYRIGHT_HOLDERS "The %s developers"
-#define COPYRIGHT_HOLDERS_SUBSTITUTION "Litecoin Core"
+
 /* Blokada redefinicji funkcji systemowych glibc */
 #define HAVE_DECL_STRNLEN 1
 #define HAVE_DECL_HTOBE16 1
 #define HAVE_DECL_HTOLE16 1
 #define HAVE_DECL_BE16TOH 1
 #define HAVE_DECL_LE16TOH 1
-#define HAVE_DECL_HTOBE32 1
-#define HAVE_DECL_BSWAP_16 1
-#define HAVE_DECL_BSWAP_32 1
-#define HAVE_DECL_BSWAP_64 1
 #define HAVE_GMTIME_R 1
+
 #endif // BITCOIN_CONFIG_H
-CODE
-echo -e "${C_NONE}"
 
-cat << EOF
-${C_HEADING}3. Refaktoryzacja Alokatorów pod C++20${C_NONE}
-Aktualizacja standardu do C++20 spowodowała wycofanie starszych aliasów
-typów (typedefów) w szablonie std::allocator<T>. Moduły dbające o
-zacieranie pamięci kryptograficznej po użyciu musiały zostać napisane na
-nowo.
 
-Modernizacja: zeroafterfree.h oraz secure.h
-Usunięto odwołania w postaci base::pointer, wprowadzając bezpośrednie
-definicje operujące na wskaźnikach T*.
-EOF
+Komenda do zastosowania:
 
-echo -e "${C_CODE}"
-cat << 'CODE'
+
+
+Bash
+mkdir -p src/config
+nano src/config/bitcoin-config.h
+# Wklej powyższy kod i zapisz plik
+
+
+3. src/support/allocators/zeroafterfree.h oraz secure.h
+Aktualizacja kompilatora do standardu C++20 sprawiła, że stare aliasy typów używane do bezpiecznego zarządzania pamięcią (np. base::pointer) przestały być obsługiwane. Kod musiał zostać napisany na nowo poprzez bezpośrednie zdefiniowanie wskaźników typu T*.
+Zastosowany kod C++:
+
+
+
+C++
 template <typename T>
 struct zero_after_free_allocator : public std::allocator<T> {
-typedef std::allocator<T> base;
-typedef typename base::size_type size_type;
-typedef typename base::difference_type difference_type;
-// C++20: Wprost zdefiniowane typy zastępujące odwołania do usuniętego base::pointer
-typedef T* pointer;
-typedef const T* const_pointer;
-typedef T& reference;
-typedef const T& const_reference;
-typedef typename base::value_type value_type;
-void deallocate(T* p, size_t n) {
-if (p != nullptr)
-memory_cleanse(p, sizeof(T) * n);
-std::allocator<T>::deallocate(p, n);
-}
+    typedef std::allocator<T> base;
+    typedef typename base::size_type size_type;
+    typedef typename base::difference_type difference_type;
+    
+    // Zgodność z C++20: Wprost zdefiniowane typy
+    typedef T* pointer;
+    typedef const T* const_pointer;
+    typedef T& reference;
+    typedef const T& const_reference;
+    typedef typename base::value_type value_type;
+    
+    void deallocate(T* p, size_t n) {
+        if (p != nullptr) memory_cleanse(p, sizeof(T) * n);
+        std::allocator<T>::deallocate(p, n);
+    }
 };
-CODE
-echo -e "${C_NONE}"
 
-cat << EOF
-${C_HEADING}4. Obsługa najnowszych wersji Bibliotek: fmt oraz LevelDB${C_NONE}
 
-${C_HEADING}4.1. Biblioteka fmt v10 w kodzie MimbleWimble (MWEB)${C_NONE}
-Aktualizacja biblioteki formatującej fmt do wersji 10 (domyślnej na
-nowszych dystrybucjach Linux) włączyła obostrzenie bezpieczeństwa dla
-funkcji typu consteval. Ciągi formatujące przekazywane w czasie
-wykonywania aplikacji nie mogą być już przetwarzane domyślnie. Wymaga
-to owinięcia zmiennej formatu klasą fmt::runtime.
+4. src/libmw/include/mw/util/StringUtil.h
+Nowsza wersja biblioteki formatującej tekst (fmt v10) wymaga, aby zmienne tekstowe w locie były oznaczane specjalną klasą fmt::runtime. Zabezpiecza to kod przed błędami bezpieczeństwa typu consteval.
+Zastosowany kod C++:
 
-Plik modyfikowany: src/libmw/include/mw/util/StringUtil.h
-EOF
 
-echo -e "${C_CODE}"
-cat << 'CODE'
-// Kod C++ (C++20 & fmt v10 compatible)
+
+C++
 template<typename ... Args>
-static std::string Format(const char* format, const Args&...
-args) {
-return fmt::format(fmt::runtime(format),
-ConvertArg(args)...);
+static std::string Format(const char* format, const Args&... args) {
+    return fmt::format(fmt::runtime(format), ConvertArg(args)...);
 }
-CODE
-echo -e "${C_NONE}"
 
-cat << EOF
-${C_HEADING}4.2. Wbudowany silnik LevelDB${C_NONE}
-Baza danych współdzielona jako wewnętrzny magazyn zależała od
-archaicznych flag platformy POSIX. Aby bezkolizyjnie zlinkować moduł
-leveldb wygenerowano dedykowany nagłówek portu ucinający
-niezgodności porządku bajtów oraz dostosowano flagi atomowe do nowego
-standardu std.
 
-Modyfikacja 1: port_config.h
-EOF
+Komenda automatycznie naprawiająca plik:
 
-echo -e "${C_CODE}"
-cat << 'CODE'
+
+
+Bash
+sed -i 's/return fmt::format(format, ConvertArg(args)...);/return fmt::format(fmt::runtime(format), ConvertArg(args)...);/' src/libmw/include/mw/util/StringUtil.h
+
+
+5. src/leveldb/port/port_config.h
+Wbudowany silnik bazy danych LevelDB wymagał oddzielnego pliku ucinającego archaiczne funkcjonalności platformy POSIX. Stworzyliśmy nowy nagłówek, który zdejmuje błędy kolejności bajtów (Endianness).
+Zastosowany kod C++:
+
+
+
+C++
 #ifndef STORAGE_LEVELDB_PORT_PORT_CONFIG_H_
 #define STORAGE_LEVELDB_PORT_PORT_CONFIG_H_
 #define LEVELDB_IS_BIG_ENDIAN 0
 #define HAVE_FDATASYNC 1
 #define HAVE_O_CLOEXEC 1
 #endif
-CODE
-echo -e "${C_NONE}"
 
-cat << EOF
-Modyfikacja 2: env_posix.cc
-Stare atrybuty std::memory_order::memory_order_relaxed, usunięte w
-nowych definicjach nagłówkowych C++20, zostały zaktualizowane w
-implementacji menedżera pamięci bazy LevelDB do
-std::memory_order_relaxed.
 
-${C_HEADING}5. Kompilacja Demona Klienta (litecoin-cli)${C_NONE}
-Zwieńczeniem tej iteracji deweloperskiej była integracja podmodułu dla
-secp256k1_zkp z aktywowanymi modułami ENABLE_MODULE_EXTRAKEYS=1,
-ENABLE_MODULE_SCHNORRSIG=1 (wymaganymi do obsługi MWEB i podpisów
-Schnorra), a następnie finalna egzekucja kompilacji CMake.
+6. src/leveldb/util/env_posix.cc
+W ramach dopasowywania bazy LevelDB do standardów nowej generacji, należało usunąć wycofane prefiksy przy deklaracji zarządzania pamięcią. Stare std::memory_order::memory_order_relaxed zostało zaktualizowane.
+Komenda automatycznie naprawiająca plik:
 
-Wynik: Po zaaplikowaniu modyfikacji środowiska polecenie:
-EOF
 
-echo -e "${C_CMD}cmake --build . --target litecoin-cli -j\$(nproc)${C_NONE}"
 
-cat << EOF
+Bash
+sed -i 's/std::memory_order::memory_order_relaxed/std::memory_order_relaxed/g' src/leveldb/util/env_posix.cc
 
-zakończyło się powodzeniem, budując biblioteki litecoin_crypto,
-univalue, secp256k1_zkp, litecoin_util i z sukcesem linkując
-pierwszy plik binarny: litecoin-cli (Litecoin Core RPC client version
-v0.21.5.6).
-EOF
+
+Kompilacja finałowa
+Gdy wszystkie pliki zostały zmodyfikowane i dostosowane do współczesnego środowiska (C++20), program jest gotowy do zbudowania za pomocą poleceń systemowych.
+Aby poprawnie zainicjować budowę i utworzyć klienta RPC (litecoin-cli), wykonaj poniższe kroki w terminalu:
+
+
+
+Bash
+mkdir -p build_cmake
+cd build_cmake
+cmake ..
+cmake --build . --target litecoin-cli -j$(nproc)
+
+
