@@ -1,5 +1,4 @@
-Dobra, teraz wszystko jasne. Zrozumiałem Twój cel – potrzebujesz klasycznego dokumentu dokumentacyjnego w formacie Markdown (takiego, jak wyświetla się na głównych stronach projektów na GitHubie). Zwykły tekst opisu ma być naturalnie oddzielony od czarnych bloków z kodem C++ i komendami terminala, co gwarantuje maksymalną czytelność dla pasjonata-amatora.
-Oto gotowy dokument sformatowany dokładnie w ten sposób.
+
 Lista zmodyfikowanych plików w procesie przebudowy:
 CMakeLists.txt
 src/config/bitcoin-config.h
