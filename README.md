@@ -14,7 +14,7 @@ Zastąpiliśmy stary system budowania Autotools nowoczesnym silnikiem CMake. Poz
 Zastosowany kod (fragment konfiguracyjny CMake):
 
 
-
+```bash
 CMake
 cmake_minimum_required(VERSION 3.16)
 project(LitecoinCore VERSION 0.21.5.6 LANGUAGES C CXX)
@@ -25,14 +25,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations)
 add_definitions(-DHAVE_CONFIG_H -DHAVE_BUILD_INFO -DUSE_LIBEVENT)
-
+```
 
 2. src/config/bitcoin-config.h
+
 Przejście na nowy kompilator GCC 14 oraz bibliotekę systemową glibc w systemie Linux spowodowało konflikty i redefinicje wbudowanych funkcji (takich jak bswap czy strnlen). Utworzyliśmy scentralizowany plik konfiguracyjny, który dezaktywuje te konflikty, wymuszając flagi HAVE_DECL_*.
 Zastosowany kod C++:
 
 
-
+```bash
 C++
 #ifndef BITCOIN_CONFIG_H
 #define BITCOIN_CONFIG_H
@@ -49,24 +50,25 @@ C++
 #define HAVE_GMTIME_R 1
 
 #endif // BITCOIN_CONFIG_H
-
+```
 
 Komenda do zastosowania:
 
 
-
+```bash
 Bash
 mkdir -p src/config
 nano src/config/bitcoin-config.h
 # Wklej powyższy kod i zapisz plik
-
+```
 
 3. src/support/allocators/zeroafterfree.h oraz secure.h
+
 Aktualizacja kompilatora do standardu C++20 sprawiła, że stare aliasy typów używane do bezpiecznego zarządzania pamięcią (np. base::pointer) przestały być obsługiwane. Kod musiał zostać napisany na nowo poprzez bezpośrednie zdefiniowanie wskaźników typu T*.
 Zastosowany kod C++:
 
 
-
+```bash
 C++
 template <typename T>
 struct zero_after_free_allocator : public std::allocator<T> {
@@ -86,35 +88,37 @@ struct zero_after_free_allocator : public std::allocator<T> {
         std::allocator<T>::deallocate(p, n);
     }
 };
-
+```
 
 4. src/libmw/include/mw/util/StringUtil.h
+
 Nowsza wersja biblioteki formatującej tekst (fmt v10) wymaga, aby zmienne tekstowe w locie były oznaczane specjalną klasą fmt::runtime. Zabezpiecza to kod przed błędami bezpieczeństwa typu consteval.
 Zastosowany kod C++:
 
 
-
+```
 C++
 template<typename ... Args>
 static std::string Format(const char* format, const Args&... args) {
     return fmt::format(fmt::runtime(format), ConvertArg(args)...);
 }
-
+```
 
 Komenda automatycznie naprawiająca plik:
 
 
 
-Bash
+```bash
 sed -i 's/return fmt::format(format, ConvertArg(args)...);/return fmt::format(fmt::runtime(format), ConvertArg(args)...);/' src/libmw/include/mw/util/StringUtil.h
-
+```
 
 5. src/leveldb/port/port_config.h
+
 Wbudowany silnik bazy danych LevelDB wymagał oddzielnego pliku ucinającego archaiczne funkcjonalności platformy POSIX. Stworzyliśmy nowy nagłówek, który zdejmuje błędy kolejności bajtów (Endianness).
 Zastosowany kod C++:
 
 
-
+```bash
 C++
 #ifndef STORAGE_LEVELDB_PORT_PORT_CONFIG_H_
 #define STORAGE_LEVELDB_PORT_PORT_CONFIG_H_
@@ -122,17 +126,18 @@ C++
 #define HAVE_FDATASYNC 1
 #define HAVE_O_CLOEXEC 1
 #endif
-
+```
 
 6. src/leveldb/util/env_posix.cc
+
 W ramach dopasowywania bazy LevelDB do standardów nowej generacji, należało usunąć wycofane prefiksy przy deklaracji zarządzania pamięcią. Stare std::memory_order::memory_order_relaxed zostało zaktualizowane.
 Komenda automatycznie naprawiająca plik:
 
 
 
-Bash
+```bash
 sed -i 's/std::memory_order::memory_order_relaxed/std::memory_order_relaxed/g' src/leveldb/util/env_posix.cc
-
+```
 
 Kompilacja finałowa
 Gdy wszystkie pliki zostały zmodyfikowane i dostosowane do współczesnego środowiska (C++20), program jest gotowy do zbudowania za pomocą poleceń systemowych.
@@ -140,10 +145,10 @@ Aby poprawnie zainicjować budowę i utworzyć klienta RPC (litecoin-cli), wykon
 
 
 
-Bash
+```bash
 mkdir -p build_cmake
 cd build_cmake
 cmake ..
 cmake --build . --target litecoin-cli -j$(nproc)
-
+```
 
